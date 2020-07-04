@@ -1,4 +1,4 @@
 # Bot
--Discord bot
+-Discord bot\n
 -Beginner
 -Can translate
