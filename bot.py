@@ -16,7 +16,6 @@ GUILD = os.getenv('DISCORD_GUILD')
 #LOAD CLIENT DATABASE FROM MONGODB
 client = pymongo.MongoClient(os.getenv('MONGODB_LINK'))
 db = client['BotDB']
-econData = db['Economy']
 
 #BOT PREFIX IS '!'
 bot = commands.Bot(command_prefix='!')
@@ -42,11 +41,7 @@ async def leave(ctx):
     await ctx.voice_client.disconnect()
 
 
-#TODO
-class Gambling(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
 bot.add_cog(translation.Translations(bot))
-bot.add_cog(bank.Bank(bot, econData))
+bot.add_cog(bank.Bank(bot, db['Economy']))
+bot.add_cog(bank.Gambling(bot, db['Economy']))
 bot.run(TOKEN)
