@@ -1,15 +1,22 @@
 # bot.py
 import os
 import discord
-import json
+import pymongo
+import translation
+import bank
+from pymongo import MongoClient
 from dotenv import load_dotenv
-from discord.ext import commands
-from googletrans import Translator
+from discord.ext import commands, tasks
 
 #LOADING BOT TOKEN AND SERVER ID
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+
+#LOAD CLIENT DATABASE FROM MONGODB
+client = pymongo.MongoClient(os.getenv('MONGODB_LINK'))
+db = client['BotDB']
+econData = db['Economy']
 
 #BOT PREFIX IS '!'
 bot = commands.Bot(command_prefix='!')
@@ -21,33 +28,25 @@ async def on_ready():
 #BOT LEAVE/JOIN VOICE CHANNEL
 @bot.command(name = 'join')
 async def join(ctx):
+    if ctx.message.author.voice is None:
+        await ctx.send(f'<@{ctx.author.id}>, you are not in a voice channel for me to join.')
+        return
     toJoin = ctx.message.author.voice.channel
     await toJoin.connect()
 
 @bot.command(name = 'leave')
 async def leave(ctx):
+    if ctx.voice_client is None:
+        await ctx.send('I am not in a voice channel.')
+        return
     await ctx.voice_client.disconnect()
 
-#BOT TRANSLATOR
-class Translations(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.translator = Translator()
 
-    @commands.command(name = 'trans')
-    async def trans(self, ctx, mes, dest='english'):
-        translated = self.translator.translate(mes, dest)
-        reply = f'Original Language: {translated.src}\nTranslated: {translated.text}\nPronunciation: {translated.pronunciation}'
-        await ctx.send(reply)
-
-#TODO
-class Bank(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
 #TODO
 class Gambling(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-bot.add_cog(Translations(bot))
+bot.add_cog(translation.Translations(bot))
+bot.add_cog(bank.Bank(bot, econData))
 bot.run(TOKEN)
