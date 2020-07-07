@@ -4,6 +4,7 @@ import discord
 import pymongo
 import translation
 import bank
+import music
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
@@ -19,7 +20,7 @@ db = client['BotDB']
 econData = db['Economy']
 
 #BOT PREFIX IS '!'
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix='.')
 
 @bot.event
 async def on_ready():
@@ -49,4 +50,5 @@ class Gambling(commands.Cog):
 
 bot.add_cog(translation.Translations(bot))
 bot.add_cog(bank.Bank(bot, econData))
+bot.add_cog(music.Music(bot))
 bot.run(TOKEN)
