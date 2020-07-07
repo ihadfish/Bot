@@ -15,10 +15,17 @@ class Bank(commands.Cog):
         if not inDatabase(self, ctx, self.econData):
             toAdd = {'_id': ctx.author.id, 'coin': 0, 'claimDaily': 0}
             self.econData.insert_one(toAdd)
+            reply = f'<@{ctx.author.id}> you have been given a pocket with 0 coins.'
             print(f'{ctx.author.display_name} has been added to the Economy collection of database BotDB.')
-            await ctx.send(f'<@{ctx.author.id}> you have been given a pocket with 0 coins.')
         else:
-            await ctx.send(f'<@{ctx.author.id}>, you already have a registered pocket.')
+            reply = f'<@{ctx.author.id}>, you already have a registered pocket.'
+
+        embed = discord.Embed(
+            title = '',
+            description = reply,
+            colour = discord.Colour.blue()
+        )
+        await ctx.send(embed = embed)
 
     @commands.command(name = 'bal')
     async def bal(self, ctx):
@@ -27,7 +34,13 @@ class Bank(commands.Cog):
         else:
             numCoin = get_coin(ctx, self.econData)
             reply = f'<@{ctx.author.id}>, your balance is {numCoin} points.'
-        await ctx.send(reply)
+
+        embed = discord.Embed(
+            title = '',
+            description = reply,
+            colour = discord.Colour.blue()
+        )
+        await ctx.send(embed = embed)
 
     @commands.command(name = 'add')
     @has_permissions(administrator = True)
@@ -40,7 +53,15 @@ class Bank(commands.Cog):
             updatedCoins = get_coin(ctx, self.econData) + int(toAdd)
             update_coin(ctx, self.econData, updatedCoins)
             reply = f'<@{ctx.author.id}>, you have successfully added {toAdd} points to your balance.'
-        await ctx.send(reply)
+
+        embed = discord.Embed(
+            title = 'Administrator Powers',
+            description = reply,
+            colour = discord.Colour.blue()
+        )
+        embed.set_footer(text = 'You can check your balance with !bal.')
+
+        await ctx.send(embed = embed)
 
     @commands.command(name = 'daily')
     async def daily(self, ctx):
@@ -55,7 +76,15 @@ class Bank(commands.Cog):
                 update_claimDaily(ctx, self.econData, 1)
                 update_coin(ctx, self.econData, updatedCoins)
                 reply = f'<@{ctx.author.id}>, 100 points have been added to your balance.'
-        await ctx.send(reply)
+
+        embed = discord.Embed(
+            title = 'Daily',
+            description = reply,
+            colour = discord.Colour.blue()
+        )
+        embed.set_footer(text = 'Dailies reset everyday.\nAdmins may reset it manually with !reset.')
+
+        await ctx.send(embed = embed)
 
     @tasks.loop(minutes = 60.0)
     async def resetDaily(self):
@@ -72,7 +101,14 @@ class Bank(commands.Cog):
     @has_permissions(administrator = True)
     async def reset(self, ctx):
         self.econData.update_many({}, {'$set':{'claimDaily': 0}})
-        await ctx.send('All dailies reset.')
+
+        embed = discord.Embed(
+            title = 'Administrator Powers',
+            description = 'All dailies reset.',
+            colour = discord.Colour.blue()
+        )
+
+        await ctx.send(embed = embed)
 
 class Gambling(commands.Cog):
     def __init__(self, bot, econData):
@@ -81,18 +117,32 @@ class Gambling(commands.Cog):
 
     @commands.command(name = 'coinflip')
     async def coinflip(self, ctx, amount = None, choice = None):
+        embed = discord.Embed(
+            title = 'Coinflip',
+            description = '',
+            colour = discord.Colour.blue()
+        )
+        #if user has not created an economy account
         if not inDatabase(self, ctx, self.econData):
             reply = f'Apologies, <@{ctx.author.id}>, register with !create first.'
-            await ctx.send(reply)
+            embed.description = reply
+            await ctx.send(embed = embed)
             return
-        if amount is None or not str.isdigit(amount):
+        #if user entered syntax incorrectly
+        if amount is None or not str.isdigit(amount) or amount == 0:
             reply = f'<@{ctx.author.id}>, specify an integer amount to bet.'
-            await ctx.send(reply)
+            embed.description = reply
+            embed.set_footer(text = 'Proper usage: !coinflip <bet> <heads/tails>')
+            await ctx.send(embed = embed)
             return
         if choice is None or (choice.lower() != 'heads' and choice.lower() != 'tails'):
             reply = f'<@{ctx.author.id}>, you did not choose heads or tails.'
-            await ctx.send(reply)
+            embed.description = reply
+            embed.set_footer(text = 'Proper usage: !coinflip <bet> <heads/tails>')
+            await ctx.send(embed = embed)
             return
+
+        #actual game
         userBal = get_coin(ctx, self.econData)
         if userBal < int(amount):
             reply = f'Apologies, <@{ctx.author.id}>, you do not have sufficient points.'
@@ -108,7 +158,15 @@ class Gambling(commands.Cog):
                 updatedCoins = get_coin(ctx, self.econData) - int(amount)
                 update_coin(ctx, self.econData, updatedCoins)
                 reply = f'<@{ctx.author.id}>, the result was {result} and you have lost {amount} points.'
-        await ctx.send(reply)
+
+        embed.description = reply
+        if int(amount) == 0:
+            footer = 'You just bored..., or like just dumb?'
+        else:
+            footer = 'You can check your balance with !bal.'
+        embed.set_footer(text = footer)
+        
+        await ctx.send(embed = embed)
 
 def get_claimDaily(ctx, econData):
     query = {'_id': ctx.author.id}
