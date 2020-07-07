@@ -8,6 +8,7 @@ class Bank(commands.Cog):
     def __init__(self, bot, econData):
         self.bot = bot
         self.econData = econData
+        self.resetDaily.start()
 
     @commands.command(name = 'create')
     async def create(self, ctx):
@@ -55,6 +56,17 @@ class Bank(commands.Cog):
                 update_coin(ctx, self.econData, updatedCoins)
                 reply = f'<@{ctx.author.id}>, 100 points have been added to your balance.'
         await ctx.send(reply)
+
+    @tasks.loop(minutes = 60.0)
+    async def resetDaily(self):
+        if datetime.now().hour == 23:
+            self.econData.update_many({}, {'$set': {'claimDaily': 0}})
+            print('Dailies reset.')
+            return
+
+    @resetDaily.before_loop
+    async def before_resetDaily(self):
+        await self.bot.wait_until_ready()
 
     @commands.command(name = 'reset')
     @has_permissions(administrator = True)
@@ -121,8 +133,3 @@ def update_coin(ctx, econData, updatedVal):
 def inDatabase(self, ctx, econData):
     query = {'_id': ctx.author.id}
     return econData.count_documents(query) != 0
-
-@tasks.loop(minutes = 60.0)
-async def resetDaily(econData):
-    if datetime.now().hour == 23:
-        econData.update_many({}, {'$set':{'claimDaily': 0}})

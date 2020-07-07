@@ -7,6 +7,7 @@ import bank
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
+from discord.ext.commands import CommandNotFound
 
 #LOADING BOT TOKEN AND SERVER ID
 load_dotenv()
@@ -23,6 +24,11 @@ bot = commands.Bot(command_prefix='!')
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        print(f'<{ctx.author.display_name}> tried to execute a command: {ctx.message.content}, but there is no such command.')
 
 #BOT LEAVE/JOIN VOICE CHANNEL
 @bot.command(name = 'join')
