@@ -6,9 +6,14 @@ import asyncio
 from mutagen.mp3 import MP3
 from discord.ext import commands
 import urllib.request
+import urllib.parse
+import requests
 import json
 import urllib
 import pprint
+import re
+from bs4 import BeautifulSoup
+from youtube_search import YoutubeSearch
 
 ydl_opts = {
     'format': 'bestaudio/best',
@@ -60,60 +65,66 @@ class Music(commands.Cog):
         self.bot = bot
         self.players = {} # to be used for multiple server compatability
 
-        # need to consolidate these fields to instance objects to store in players
-        # self.song_queue = []
-        # self.curr_song = None
-        # self.curr_url = None
-        # self.song_file = None
-
     @commands.command(name='play', pass_context=True)
-    async def play(self, ctx, url=None):
+    async def play(self, ctx, *, url=None):
         if ctx.voice_client is None:
             await ctx.send(f'<@{ctx.author.id}> I am not in a voice channel, use .join to add me so we can start jamming!')
+            return
         elif url is None:
             await ctx.send(f'<@{ctx.author.id}> please provide a song for me to play!')
+            return
         elif not self.check_url(url):
-            await ctx.send(f'<@{ctx.author.id}> please provide a valid URL for your song!')
-        else:
 
-            player = self.get_player(ctx)
+            textToSearch = url
+            query = urllib.parse.quote(textToSearch)
+            uri = "https://www.youtube.com/results?search_query=" + query
+            response = urllib.request.urlopen(uri)
+            html = response.read()
+            soup = BeautifulSoup(html, 'html.parser')
+            search_results = re.findall(r'/watch\?v=(.{11})', str(soup))
+            
+            url = f'https://www.youtube.com/watch?v={search_results[0]}'
 
-            async def queue():
-                await ctx.send(f'Adding song to queue: {self.song_title(url)}')
-                player.enqueue(url)
+            # not returning after this - for now, use first search result as url
 
-            if player.get_curr_song() is not None or player.get_curr_url() is not None:
-                await queue()
-                return
+        player = self.get_player(ctx)
 
-            # starts here
-            song = os.path.isfile(str(ctx.message.guild) + '-song.mp3')
-            try:
-                if song:
-                    os.remove(str(ctx.message.guild) + '-song.mp3')
-            except PermissionError:
-                await queue()
-                return
+        async def queue():
+            await ctx.send(f'Adding song to queue: {self.song_title(url)}')
+            player.enqueue(url)
 
-            player.set_curr_url(url)
-            player.set_curr_song(self.song_title(url))
+        if player.get_curr_song() is not None or player.get_curr_url() is not None:
+            await queue()
+            return
 
-            voice = ctx.voice_client
+        # starts here
+        song = os.path.isfile(str(ctx.message.guild) + '-song.mp3')
+        try:
+            if song:
+                os.remove(str(ctx.message.guild) + '-song.mp3')
+        except PermissionError:
+            await queue()
+            return
 
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+        player.set_curr_url(url)
+        player.set_curr_song(self.song_title(url))
 
-            for file in os.listdir('./'):
-                if file.__contains__(self.song_title(url).replace('/','_')) and file.endswith('.mp3'):
-                    player.set_song_file(file)
-                    print('renamed file: ', player.get_song_file())
-                    os.rename(file, str(ctx.message.guild) + '-song.mp3')
+        voice = ctx.voice_client
 
-            voice.play(discord.FFmpegPCMAudio(str(ctx.message.guild) + '-song.mp3'),
-                       after=lambda e: self.next_song(ctx))
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
-            voice.source = discord.PCMVolumeTransformer(voice.source)
-            voice.source.volume = 0.07
+        for file in os.listdir('./'):
+            if file.__contains__(self.song_title(url).replace('/','_')) and file.endswith('.mp3'):
+                player.set_song_file(file)
+                print('renamed file: ', player.get_song_file())
+                os.rename(file, str(ctx.message.guild) + '-song.mp3')
+
+        voice.play(discord.FFmpegPCMAudio(str(ctx.message.guild) + '-song.mp3'),
+                    after=lambda e: self.next_song(ctx))
+
+        voice.source = discord.PCMVolumeTransformer(voice.source)
+        voice.source.volume = 0.07
 
     @commands.command(name='current', pass_context=True)
     async def current(self, ctx):
