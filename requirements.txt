@@ -7,6 +7,7 @@ asyncio==3.4.3
 attrs==19.3.0
 autopep8==1.5.3
 beautifulsoup4==4.9.1
+bs4==0.0.1
 certifi==2020.4.5.2
 cffi==1.14.0
 chardet==3.0.4
@@ -54,4 +55,5 @@ websockets==8.1
 wrapt==1.12.1
 yarl==1.4.2
 youtube-dl==2020.6.16.1
+youtube-search==0.1.4
 zope.interface==5.1.0
