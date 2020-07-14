@@ -50,5 +50,5 @@ class Gambling(commands.Cog):
 
 bot.add_cog(translation.Translations(bot))
 bot.add_cog(bank.Bank(bot, econData))
-bot.add_cog(music.Music(bot))
+bot.add_cog(music.Music())
 bot.run(TOKEN)

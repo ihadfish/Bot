@@ -26,6 +26,13 @@ class Player:
         self.curr_song = None
         self.curr_url = None
         self.song_file = None
+        self.loading_song = False
+
+    def set_loading(self, loading):
+        self.loading_song = loading
+    
+    def is_loading(self):
+        return self.loading_song
 
     def get_song_queue(self):
         return self.song_queue
@@ -62,8 +69,7 @@ class Player:
 
 
 class Music(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self):
         self.players = {}  # to be used for multiple server compatability
 
     @commands.command(name='play', pass_context=True)
@@ -101,20 +107,36 @@ class Music(commands.Cog):
 
         player = self.get_player(ctx)
 
-        async def queue():
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(url,download=False)
+            if 'entries' in result:
+                entries = result['entries']
+                video_url = entries[0]['webpage_url']
+
+                for i, item in enumerate(entries):
+                    if i == 0:
+                        continue
+                    else:
+                        player.enqueue(result['entries'][i]['webpage_url'])
+
+            else:
+                video_url = result['webpage_url']
+
+        async def queue(url):
             embed = discord.Embed(
                 title='',
-                description=f'<@{ctx.author.id}> has added a song to queue: {self.song_title(url)}',
+                description=f'<@{ctx.author.id}> has added {self.song_title(url)} to the queue!',
                 color=0x00FFE7
             )
             await ctx.send(embed=embed)
             player.enqueue(url)
 
         if player.get_curr_song() is not None or player.get_curr_url() is not None:
-            await queue()
+            await queue(url=video_url)
             return
 
         # starts here
+        player.set_loading(True)
         song = os.path.isfile(str(ctx.message.guild) + '-song.mp3')
         try:
             if song:
@@ -123,25 +145,36 @@ class Music(commands.Cog):
             await queue()
             return
 
-        player.set_curr_url(url)
-        player.set_curr_song(self.song_title(url))
-
         voice = ctx.voice_client
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            ydl.download([video_url])
+
+        player.set_curr_url(video_url)
+        player.set_curr_song(self.song_title(video_url))
 
         for file in os.listdir('./'):
-            if file.__contains__(self.song_title(url).replace('/', '_').replace('\"', '\'')) and file.endswith('.mp3'):
+            if file.__contains__(self.song_title(video_url).replace('/', '_').replace('\"', '\'')) and file.endswith('.mp3'):
+                found = True
                 player.set_song_file(file)
                 os.rename(file, str(ctx.message.guild) + '-song.mp3')
                 break
+
+        player.set_loading(False)
 
         voice.play(discord.FFmpegPCMAudio(str(ctx.message.guild) + '-song.mp3'),
                    after=lambda e: self.next_song(ctx))
 
         voice.source = discord.PCMVolumeTransformer(voice.source)
         voice.source.volume = 0.07
+    
+        embed = discord.Embed(
+            title='',
+            description=f'Now playing {self.song_title(player.get_curr_url())} per request of <@{ctx.author.id}>',
+            color=0x00FFE7
+        )
+
+        await ctx.send(embed=embed)
 
     @commands.command(name='current', pass_context=True)
     async def current(self, ctx):
@@ -167,7 +200,7 @@ class Music(commands.Cog):
     @commands.command(name='queue', pass_context=True)
     async def queue(self, ctx):
         player = self.get_player(ctx)
-        description = 'These songs are currently lined up to be played!' if len(
+        description = 'These songs are the first 25 songs currently lined up to be played!' if len(
             player.song_queue) else 'There are no songs currently in queue!'
         embed = discord.Embed(
             title="Current queue",
@@ -245,7 +278,7 @@ class Music(commands.Cog):
                 color=0x00FFE7
             )
             await ctx.send(embed=embed)
-        elif not ctx.voice_client.is_playing() or player.get_curr_song() is None:
+        elif (not ctx.voice_client.is_playing() or player.get_curr_song() is None) and not skipped:
             embed = discord.Embed(
                 title='',
                 description=f'<@{ctx.author.id}> I am not playing any music to stop! U need to add some tunes in order to stop, silly.',
@@ -265,7 +298,14 @@ class Music(commands.Cog):
     @commands.command(name='skip', pass_context=True)
     async def skip(self, ctx):
         player = self.get_player(ctx)
-        if ctx.voice_client is None:
+        if player.is_loading():
+            embed = discord.Embed(
+                title='',
+                description=f'<@{ctx.author.id}> sorry, I cannot skip as I am currently loading a song!',
+                color=0x00FFE7
+            )
+            await ctx.send(embed=embed)
+        elif ctx.voice_client is None:
             embed = discord.Embed(
                 title='',
                 description=f'<@{ctx.author.id}> please summon me to your voice channel!',
@@ -315,6 +355,7 @@ class Music(commands.Cog):
     def next_song(self, ctx):
         player = self.get_player(ctx)
         if len(player.get_song_queue()):
+            player.set_loading(True)
             url = player.dequeue()
             song = os.path.isfile(str(ctx.message.guild) + '-song.mp3')
             try:
@@ -324,19 +365,21 @@ class Music(commands.Cog):
                 player.enqueue(url)
                 return
 
-            player.set_curr_url(url)
-            player.set_curr_song(self.song_title(url))
-
             voice = ctx.voice_client
 
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
+            player.set_curr_url(url)
+            player.set_curr_song(self.song_title(url))
+
             for file in os.listdir('./'):
-                if file.__contains__(self.song_title(url).replace('/', '_')) and file.endswith('.mp3'):
+                if file.__contains__(self.song_title(url).replace('/', '_').replace('\"', '\'')) and file.endswith('.mp3'):
                     player.set_song_file(file)
                     os.rename(file, str(ctx.message.guild) + '-song.mp3')
                     break
+
+            player.set_loading(False)
 
             voice.play(discord.FFmpegPCMAudio(str(ctx.message.guild) + '-song.mp3'),
                        after=lambda e: self.next_song(ctx))
