@@ -100,7 +100,7 @@ async def matt_error(ctx, error):
     else:
         raise error
 
-#BOT PREFIX
+#BOT PREFIX -- THIS BREAKS OTHER COMMANDS
 @bot.event
 async def on_message(message):
     #replace id with your bots ID
