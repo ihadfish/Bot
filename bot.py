@@ -12,7 +12,7 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 #BOT PREFIX IS '!'
-bot = commands.Bot(command_prefix='i!')
+bot = commands.Bot(command_prefix='%')
 
 @bot.event
 async def on_ready():
@@ -93,20 +93,33 @@ async def matt_error(ctx, error):
         colour = discord.Colour.red()
     )
 
-    embedErrorOne.set_footer(text = 'Try !kenton in the meantime!')
+    embedErrorOne.set_footer(text = 'Try %kenton in the meantime!')
 
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(embed = embedErrorOne)
     else:
         raise error
 
-#BOT PREFIX -- THIS BREAKS OTHER COMMANDS
-@bot.event
-async def on_message(message):
-    #replace id with your bots ID
-    if message.content.startswith('<@!728896861225877534>'):
-        channel = message.channel
-        await channel.send(f'My Prefix is {bot.command_prefix}')
+#BOT PREFIX -- BROKEN
+#@bot.event
+#async def on_message(message):
+#    #replace id with your bots ID
+#    if message.content.startswith('<@!728896861225877534>'):
+#        channel = message.channel
+#        await channel.send(f'My Prefix is {bot.command_prefix}')
+
+#TEST EMBED MESSAGE
+@bot.command(name = 'test')
+async def test(ctx):
+        embedTest = discord.Embed(
+        title = '',
+        description = 'Test!',
+        colour = discord.Colour.gold()
+        )
+
+        msg = await ctx.send(embed = embedTest)
+        await msg.add_reaction('<:orb:730238112428589076>')
+
 
 #TODO
 class Bank(commands.Cog):
