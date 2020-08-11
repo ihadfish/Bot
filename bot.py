@@ -54,14 +54,14 @@ class Translations(commands.Cog):
 async def info(ctx):
     embedInfo = discord.Embed(
         title = f'Tower of Matt',
-        description = 'Long ago Matt was gay, he still is. <:emoji1:729889712239673344>',
+        description = 'Reach the top, and everything will be yours. At the top of the tower exists everything in this world, and all of it can be yours. You can become a god.',
         colour = discord.Colour.blue()
     )
 
     embedInfo.add_field(name = f'Creation of Tower', value = ctx.guild.created_at, inline = False)
-    embedInfo.add_field(name = f'Number of Regulars <:khucie:460943559059832854>', value = ctx.guild.member_count, inline = False)
-    embedInfo.set_thumbnail(url = 'https://i.imgur.com/bhmaknw.jpeg')
-    embedInfo.set_image(url = 'https://i.imgur.com/bhmaknw.jpeg')
+    embedInfo.add_field(name = f'Number of Regulars <:pocket:730278080731545672>', value = ctx.guild.member_count, inline = False)
+    #embedInfo.set_thumbnail(url = 'https://i.imgur.com/2WY7Gsz.jpg')
+    embedInfo.set_image(url = 'https://i.imgur.com/2WY7Gsz.jpg')
 
     await ctx.send(embed = embedInfo)
 
@@ -111,15 +111,29 @@ async def matt_error(ctx, error):
 #TEST EMBED MESSAGE
 @bot.command(name = 'test')
 async def test(ctx):
-        embedTest = discord.Embed(
+    embedTest = discord.Embed(
         title = '',
         description = 'Test!',
         colour = discord.Colour.gold()
-        )
+    )
 
-        msg = await ctx.send(embed = embedTest)
-        await msg.add_reaction('<:orb:730238112428589076>')
+    msg = await ctx.send(embed = embedTest)
+    await msg.add_reaction('<:orb:730238112428589076>')
+    await msg.add_reaction('<:pocket:730278080731545672>')
 
+#GUIDE INTRODUCTION
+@bot.command(name = 'guide')
+async def guide(ctx):
+    embedGuide = discord.Embed(
+        title = 'Welcome To the Tower of Matt',
+        description = 'The answers to everything you want to know lie at the top of the tower. If you seek the answers, then I will train you.',
+        colour = discord.Colour.gold()
+    )
+
+    embedGuide.set_thumbnail(url = bot.user.avatar_url)
+    embedGuide.set_footer(text = f'Type {bot.command_prefix}help for command list!')
+
+    await ctx.send(embed = embedGuide)
 
 #TODO
 class Bank(commands.Cog):
